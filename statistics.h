@@ -3,41 +3,35 @@
 #include <stdlib.h>
 #include <math.h>
 
-typedef unsigned int uint;
+#include "gobject.h"
 
 #define STATISTICS_H
-#define ALPHABET_SIZE 256
 #define PERIODSLIMIT 1000000
 
-class Statistics{
-    bool bytes[ALPHABET_SIZE];
-    uint count;          // how many elements of bytes[] is true
+class Statistics: public GObject{
     uint GSize;          // length of g-period
-    uint *GPeriods;      // all g-periods in processed file
+    uint GPeriods[PERIODSLIMIT];      // all g-periods in processed file
     uint GPeriodsSize;   // array size   
 
 public:
     void Init(){
-        for (int i=0;i<ALPHABET_SIZE;i++){
-            bytes[i] = 0;            
-        }
-        GSize = count = 0;        
+        GObject::Init();
+        GSize = 0;        
     }
 
     Statistics(){
-        GPeriods=new uint [PERIODSLIMIT];
         GPeriodsSize = 0;
         Init();
     }
-    ~Statistics(){
-        delete GPeriods;        
-    }
+
+    ~Statistics(){}
 
     void OnGPeriodFound(){        
         if (GPeriodsSize >= PERIODSLIMIT) return;
         GPeriods[GPeriodsSize++] = GSize;        
         Init();
     }
+
     void Process(uint i){        
         GSize++;
         bts(i % ALPHABET_SIZE);
@@ -46,13 +40,13 @@ public:
     inline bool bt(unsigned int i){
         return bytes[i];
     }
+
     void bts(uint i){
-        if (!bt(i)){
-            count++;            
-            bytes[i] = true;            
-            if (count >= ALPHABET_SIZE){
-                OnGPeriodFound();
-            }
+        if (bt(i)) return;            
+        bytes_filled++;
+        bytes[i] = true;            
+        if (bytes_filled >= ALPHABET_SIZE){
+            OnGPeriodFound();
         }
     }
 
@@ -64,7 +58,7 @@ public:
                 tmp=GPeriods[i];
             }
         }
-    return tmp;
+        return tmp;
     }
 
     uint max(){
@@ -74,7 +68,7 @@ public:
                 tmp=GPeriods[i];
             }
         }
-    return tmp;
+        return tmp;
     }
 
     double Average(){
@@ -82,8 +76,9 @@ public:
         for (uint i=0;i<GPeriodsSize;i++){
             tmp=tmp+(double)GPeriods[i];
         }
-    return tmp/GPeriodsSize;
-    }    
+        return tmp/GPeriodsSize;
+    }
+
     double SD(){
         double tmp=0;      
         double avg=Average();
@@ -91,7 +86,7 @@ public:
         for (uint i=0;i<GPeriodsSize;i++){
             tmp=tmp+(double)(avg-(double)GPeriods[i])*(avg-(double)GPeriods[i]);
         }
-    return sqrt(1.0/GPeriodsSize*tmp);
+        return sqrt(1.0/GPeriodsSize*tmp);
     }    
 
     void ShowTotalStatistics(){
@@ -100,10 +95,7 @@ public:
         printf("max=%d\n",max());
         printf("avg=%.3f\n",Average());
         printf("SD=%.3f\n",SD());
-
-
     }
 #pragma endregion
-
 };
 #endif

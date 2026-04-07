@@ -2,28 +2,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "statistics.h"
+
+#include "gobject.h"
 
 #define RESULTSLIMIT 10000
 #define QUANTIL 6.63
 
-class Predictor{
+class Predictor: public GObject{
     uint SECOND_PART; 
-    uint G_PERIOD; //
-
-    bool bytes[ALPHABET_SIZE];
-    uint bytesFilled; //symbols of alphabet in C, already appeared. 
-    bool *resultsOfPrediction;
+    uint G_PERIOD;
+    bool resultsOfPrediction[RESULTSLIMIT];
     uint resultSize;
-    bool flagDoPredict;
     uint count;
     uint inFirstPart,InSecondPart;
+
 public:
     void Init(){
-        for (int i=0;i<ALPHABET_SIZE;i++){
-            bytes[i] = 0;            
-        }       
-        //flagDoPredict=false;
+        GObject::Init();
         count=0;
         inFirstPart = InSecondPart = 0;
     }
@@ -31,17 +26,15 @@ public:
     Predictor(uint _secondPart,uint _firstPart){
         SECOND_PART=_secondPart;
         G_PERIOD=_firstPart;
-        resultsOfPrediction=new bool [RESULTSLIMIT];
         resultSize = 0;
         Init();        
     }
-    ~Predictor(){
-        delete resultsOfPrediction;        
-    }
+
+    ~Predictor(){}
 
     bool ChiSquare(){
         double chi;
-        double probabiltyInG=1.0*bytesFilled/ALPHABET_SIZE;        
+        double probabiltyInG=1.0*bytes_filled/ALPHABET_SIZE;        
         double TheoreticalInFirstPart=(probabiltyInG)*SECOND_PART;
         double TheoreticalInSecondPart=(1.0-probabiltyInG)*SECOND_PART;
 
@@ -57,7 +50,7 @@ public:
             resultsOfPrediction[resultSize++]=ChiSquare();
             count=0;            
             Init();   
-            bytesFilled=0;         
+            bytes_filled=0;         
         }else{
             if (count>G_PERIOD-SECOND_PART){                
                 if (bt(i)){
@@ -74,17 +67,15 @@ public:
     inline bool bt(unsigned int i){
         return bytes[i];
     }
+
     void bts(uint i){
-        if (!bytes[i]){
-            bytes[i] = true;  
-            bytesFilled++;                                          
-        }
+        if (bytes[i]) return;
+        bytes[i] = true;  
+        bytes_filled++;                                          
     }
 
 #pragma region ShowStatistic  
-
     void ShowTotalStatistics(){        
-
         uint tmp=0;
         for (uint i=0;i<resultSize;i++){            
             tmp=(resultsOfPrediction[i])?tmp+1:tmp;
