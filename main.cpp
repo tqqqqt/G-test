@@ -1,48 +1,44 @@
-#include "statistics.h"
 #include "predict.h"
+#include "statistics.h"
 
-void ReadFile(char *path){
-    FILE *f=fopen(path,"rb");
-    if (f==NULL){
-        printf("File not found"); exit(1);
+void ReadFile(char *path) {
+    FILE *f = fopen(path, "rb");
+    if (f == NULL) {
+        printf("File not found");
+        exit(1);
     }
     unsigned char ch;
-    Predictor *Pred;
+    Predictor Pred;
     Statistics Stat;
 
-    while(!feof(f)){
-        fscanf(f,"%c",&ch);
-        Stat.Process(ch);            
-    }
-    Stat.ShowTotalStatistics();
-
-    for(int firstPart=700;firstPart<=2900;firstPart+=200){
-        for (int seconPart=50;seconPart<500;seconPart=seconPart+50){
-            Pred=new Predictor(seconPart,firstPart);
-            fseek(f,0,0);
-            while(!feof(f)){
-                fscanf(f,"%c",&ch);            
-                Pred->Process(ch);
-            }        
-            Pred->ShowTotalStatistics();
-            delete Pred;
-        }    
+    while (!feof(f)) {
+        fscanf(f, "%c", &ch);
+        Stat.Process(ch);
+        Pred.AddSymbol(ch);
     }
     fclose(f);
+    Stat.ShowTotalStatistics();
+
+    Pred.SetSecondPart(50, 450, 50);
+
+    for (int first_part = 700; first_part <= 2900; first_part += 200) {
+        Pred.SetPeriod(first_part);
+        Pred.MainProcess();
+    }
 }
 
-void Usage(char *path){
+void Usage(char *path) {
     printf("Programm analyses g-series of rnd.file\n");
     printf("Usage:\n");
-    printf("%s file\n",path);
+    printf("%s file\n", path);
 }
 
-int main(int argc,char *argv[]){
-    if (argc!=2){
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
         Usage(argv[0]);
         return 0;
     }
-    ReadFile(argv[1]);     
+    ReadFile(argv[1]);
 
     return 0;
 }
