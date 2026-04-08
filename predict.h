@@ -8,20 +8,23 @@
 typedef unsigned int uint;
 
 #define ALPHABET_SIZE 256
-#define RESULTSLIMIT 10000
+#define RESULTS_LIMIT 10000
 #define QUANTIL 6.63
 
 class Predictor {
     std::vector<std::vector<bool>> bytes;
     std::vector<uint> bytes_filled;
+    std::vector<uint> count;
+    uint in_first_part, in_second_part;
+
     uint lower_value_second_part, upper_value_second_part;
     uint step_second_part;
-    uint SECOND_PART;
-    uint G_PERIOD;
-    bool resultsOfPrediction[RESULTSLIMIT];
-    uint resultSize;
-    std::vector<uint> count;
-    uint inFirstPart, InSecondPart;
+    uint second_part;
+    uint g_period;
+
+    bool results_of_prediction[RESULTS_LIMIT];
+    uint result_size;
+
     std::vector<uint> data;
     std::vector<uint> point_in_data;
     uint data_size;
@@ -32,14 +35,11 @@ class Predictor {
         bytes_filled.clear();
         count.clear();
         point_in_data.clear();
-        resultSize = 0;
-        inFirstPart = InSecondPart = 0;
+        result_size = 0;
+        in_first_part = in_second_part = 0;
     }
 
-    Predictor() {
-        resultSize = 0;
-        Init();
-    }
+    Predictor() { Init(); }
 
     ~Predictor() {}
 
@@ -51,7 +51,7 @@ class Predictor {
     }
 
     void SetPeriod(const uint& _period) {
-        G_PERIOD = _period;
+        g_period = _period;
         Init();
     }
 
@@ -60,59 +60,59 @@ class Predictor {
         data_size += 1;
     }
 
-    bool ChiSquare(uint num_window) {
+   private:
+    bool ChiSquare(const uint& num_window) {
         double chi;
         double probabiltyInG = 1.0 * bytes_filled[num_window] / ALPHABET_SIZE;
-        double TheoreticalInFirstPart = (probabiltyInG)*SECOND_PART;
-        double TheoreticalInSecondPart = (1.0 - probabiltyInG) * SECOND_PART;
+        double TheoreticalInFirstPart = (probabiltyInG)*second_part;
+        double TheoreticalInSecondPart = (1.0 - probabiltyInG) * second_part;
 
-        chi = (1.0 * TheoreticalInFirstPart - inFirstPart) *
-              (1.0 * TheoreticalInFirstPart - inFirstPart) /
+        chi = (1.0 * TheoreticalInFirstPart - in_first_part) *
+              (1.0 * TheoreticalInFirstPart - in_first_part) /
               TheoreticalInFirstPart;
-        chi = chi + (1.0 * TheoreticalInSecondPart - InSecondPart) *
-                        (1.0 * TheoreticalInSecondPart - InSecondPart) /
+        chi = chi + (1.0 * TheoreticalInSecondPart - in_second_part) *
+                        (1.0 * TheoreticalInSecondPart - in_second_part) /
                         TheoreticalInSecondPart;
         return (chi > QUANTIL) ? true : false;
     }
 
-    int Process(uint i, uint num_window) {
+    int Process(const uint& i, const uint& num_window) {
         count[num_window] += 1;
-        if (count[num_window] > G_PERIOD) {
-            if (resultSize >= RESULTSLIMIT) return -1;
-            resultsOfPrediction[resultSize++] = ChiSquare(num_window);
-            inFirstPart = 0;
-            InSecondPart = 0;
+        if (count[num_window] > g_period) {
+            if (result_size >= RESULTS_LIMIT) return -1;
+            results_of_prediction[result_size++] = ChiSquare(num_window);
+            in_first_part = 0;
+            in_second_part = 0;
             return 0;
-        } else {
-            if (count[num_window] > G_PERIOD - SECOND_PART) {
-                if (bt(i, num_window)) {
-                    inFirstPart++;
-                } else {
-                    InSecondPart++;
-                }
-            } else {
-                bts(i % ALPHABET_SIZE, num_window);
-            }
-        }
+        } else if (count[num_window] > g_period - second_part) {
+            if (bt(i, num_window))
+                in_first_part++;
+            else
+                in_second_part++;
+        } else
+            bts(i % ALPHABET_SIZE, num_window);
+
         return 1;
     }
 
+   public:
     void MainProcess() {
-        size_t count_windows = floor((data_size * 1.0) / G_PERIOD);
-        if (count_windows > RESULTSLIMIT) count_windows = RESULTSLIMIT;
+        size_t count_windows = floor((data_size * 1.0) / g_period);
+        if (count_windows > RESULTS_LIMIT) count_windows = RESULTS_LIMIT;
+
         count = std::vector<uint>(count_windows, 0);
         bytes = std::vector<std::vector<bool>>(
             count_windows, std::vector<bool>(ALPHABET_SIZE, 0));
         bytes_filled = std::vector<uint>(count_windows, 0);
         point_in_data = std::vector<uint>(count_windows, 0);
         for (int i = 1; i < count_windows; ++i)
-            point_in_data[i] = point_in_data[i - 1] + G_PERIOD + 1;
+            point_in_data[i] = point_in_data[i - 1] + g_period + 1;
 
-        for (int second_part = upper_value_second_part;
-             second_part >= lower_value_second_part;
-             second_part -= step_second_part) {
-            SECOND_PART = second_part;
-            resultSize = 0;
+        for (int temp_second_part = upper_value_second_part;
+             temp_second_part >= lower_value_second_part;
+             temp_second_part -= step_second_part) {
+            second_part = temp_second_part;
+            result_size = 0;
 
             for (int number_window = 0; number_window < count_windows;
                  ++number_window) {
@@ -121,22 +121,23 @@ class Predictor {
                     point_in_data[number_window] += 1;
                 }
                 point_in_data[number_window] =
-                    point_in_data[number_window] - SECOND_PART;
+                    point_in_data[number_window] - second_part;
                 if (number_window == 0 &&
                     second_part == upper_value_second_part)
                     point_in_data[number_window] += 1;
-                count[number_window] = count[number_window] - SECOND_PART - 1;
+                count[number_window] = count[number_window] - second_part - 1;
             }
 
             ShowTotalStatistics();
         }
     }
 
-    inline bool bt(unsigned int i, uint num_window) {
+   private:
+    inline bool bt(const uint& i, const uint& num_window) {
         return bytes[num_window][i];
     }
 
-    void bts(uint i, uint num_window) {
+    void bts(const uint& i, const uint& num_window) {
         if (bytes[num_window][i]) return;
         bytes[num_window][i] = true;
         bytes_filled[num_window]++;
@@ -145,12 +146,12 @@ class Predictor {
 #pragma region ShowStatistic
     void ShowTotalStatistics() {
         uint tmp = 0;
-        for (uint i = 0; i < resultSize; i++) {
-            tmp = (resultsOfPrediction[i]) ? tmp + 1 : tmp;
+        for (uint i = 0; i < result_size; i++) {
+            tmp = (results_of_prediction[i]) ? tmp + 1 : tmp;
         }
-        printf("SeconPart=%d g-period=%d - ", SECOND_PART, G_PERIOD);
+        printf("SeconPart=%d g-period=%d - ", second_part, g_period);
         printf("Prediction probability %.3f, NumberOfBroken=%d from %d\n",
-               1.0f * tmp / resultSize, tmp, resultSize);
+               1.0f * tmp / result_size, tmp, result_size);
     }
 #pragma endregion
 };
