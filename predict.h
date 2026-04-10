@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include <cmath>
+#include <stdexcept>
 #include <vector>
 
 typedef unsigned int uint;
@@ -43,19 +44,31 @@ class Predictor {
 
     ~Predictor() {}
 
-    void SetSecondPart(const uint& _lower_value, const uint& _upper_value,
-                       const uint& _step) noexcept {
-        lower_value_second_part = _lower_value;
-        upper_value_second_part = _upper_value;
+    void SetSecondPart(const int& _lower_value, const int& _upper_value,
+                       const int& _step){
+        if(_lower_value<0 || _upper_value<=0 || _step<=0) throw std::runtime_error("second part value < 0");
+        
+        if(_lower_value>_upper_value) {
+            lower_value_second_part = _upper_value;
+            upper_value_second_part = _lower_value;
+        }
+        else {
+            lower_value_second_part = _lower_value;
+            upper_value_second_part = _upper_value;
+        }
         step_second_part = _step;
     }
 
-    void SetPeriod(const uint& _period) {
+    void SetPeriod(const int& _period) {
+        if(_period<=0) throw std::runtime_error("period < 0");
+
         g_period = _period;
         Init();
     }
 
-    void AddSymbol(uint symb) {
+    void AddSymbol(const uint& symb) {
+        if(data_size==data.max_size()) return;
+        
         data.push_back(symb);
         data_size += 1;
     }
